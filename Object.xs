@@ -611,6 +611,18 @@ iset_remove_one(ISET* s, SV* el, int spell_in_progress)
   THR_UNLOCK;
   return 0;
 }
+
+/* DESTROY sets the set's pointer to 0 before releasing the members. A
+   member's DESTROY calling back into that set would then dereference
+   NULL: croak instead. */
+ISET*
+_iset_from_self(SV* self)
+{
+  ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+  if (!s)
+    Perl_croak(aTHX_ "Set::Object used during its own destruction");
+  return s;
+}
   
 MODULE = Set::Object		PACKAGE = Set::Object		
 
@@ -660,7 +672,7 @@ insert(self, ...)
    SV* self;
 
    PPCODE:
-      ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+      ISET* s = _iset_from_self(self);
       I32 item;
       int inserted = 0;
 
@@ -684,7 +696,7 @@ remove(self, ...)
 
    PPCODE:
 
-      ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+      ISET* s = _iset_from_self(self);
       I32 item;
       int removed = 0;
 
@@ -701,7 +713,7 @@ is_null(self)
    SV* self;
 
    CODE:
-   ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+   ISET* s = _iset_from_self(self);
    if (s->elems)
      XSRETURN_UNDEF;
    if (s->flat) {
@@ -718,7 +730,7 @@ size(self)
    SV* self;
 
    CODE:
-   ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+   ISET* s = _iset_from_self(self);
    RETVAL = s->elems + (s->flat ? HvKEYS(s->flat) : 0);
 
    OUTPUT: RETVAL
@@ -752,7 +764,7 @@ includes(self, ...)
 
    PPCODE:
 
-      ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+      ISET* s = _iset_from_self(self);
       I32 hash, index, item;
       SV **el_iter, **el_last;
       BUCKET* bucket;
@@ -809,7 +821,7 @@ members(self)
    
    PPCODE:
 
-      ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+      ISET* s = _iset_from_self(self);
       BUCKET* bucket_iter = s->bucket;
       BUCKET* bucket_last = bucket_iter + s->buckets;
 
@@ -852,7 +864,7 @@ clear(self)
    SV* self
 
    CODE:
-      ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+      ISET* s = _iset_from_self(self);
 
       iset_clear(s);
       if (s->flat) {
@@ -882,7 +894,7 @@ is_weak(self)
    SV* self
 
    CODE:
-      ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+      ISET* s = _iset_from_self(self);
 
       RETVAL = !!s->is_weak;
 
@@ -893,7 +905,7 @@ _weaken(self)
    SV* self
 
    CODE:
-      ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+      ISET* s = _iset_from_self(self);
 
       if (s->is_weak)
         XSRETURN_UNDEF;
@@ -909,7 +921,7 @@ _strengthen(self)
    SV* self
 
    CODE:
-      ISET* s = INT2PTR(ISET*, SvIV(SvRV(self)));
+      ISET* s = _iset_from_self(self);
 
       if (!s->is_weak)
         XSRETURN_UNDEF;
@@ -993,7 +1005,7 @@ get_flat(sv)
      SV* sv
 PROTOTYPE: $
 CODE:
-  ISET* s = INT2PTR(ISET*, SvIV(SvRV(sv)));
+  ISET* s = _iset_from_self(sv);
   if (s->flat) {
     RETVAL = newRV_inc((SV *)s->flat);
   } else {
