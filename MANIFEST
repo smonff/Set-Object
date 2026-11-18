@@ -25,6 +25,7 @@ t/misc/threads.t
 t/misc/undef.t
 t/object/abuse.t
 t/object/clear.t
+t/object/destroy_reentry.t
 t/object/difference.t
 t/object/equal.t
 t/object/flags.t
